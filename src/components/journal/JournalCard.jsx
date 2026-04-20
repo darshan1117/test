@@ -1,5 +1,6 @@
 import { format, parseISO } from 'date-fns';
-import { Trash2 } from 'lucide-react';
+import { Trash2, Edit2 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 const MOODS = {
   Happy: { emoji: '😊', color: '#10b981', bg: 'rgba(16, 185, 129, 0.1)' },
@@ -9,6 +10,7 @@ const MOODS = {
 };
 
 const JournalCard = ({ entry, onDelete }) => {
+  const navigate = useNavigate();
   const moodInfo = MOODS[entry.mood] || MOODS.Happy;
   const dateStr = entry.date ? format(parseISO(entry.date), 'MMM do, yyyy') : 'Unknown Date';
 
@@ -23,15 +25,24 @@ const JournalCard = ({ entry, onDelete }) => {
           >
             {moodInfo.emoji} {entry.mood}
           </div>
-          {onDelete && (
+          <div style={{ display: 'flex', gap: 4 }}>
             <button
               type="button"
               className="btn btn-icon btn-ghost"
-              onClick={() => onDelete(entry.id)}
+              onClick={() => navigate(`/edit-entry/${entry.id}`)}
             >
-              <Trash2 size={16} style={{ color: 'var(--text-muted)' }} />
+              <Edit2 size={16} style={{ color: 'var(--text-muted)' }} />
             </button>
-          )}
+            {onDelete && (
+              <button
+                type="button"
+                className="btn btn-icon btn-ghost"
+                onClick={() => onDelete(entry.id)}
+              >
+                <Trash2 size={16} style={{ color: 'var(--text-muted)' }} />
+              </button>
+            )}
+          </div>
         </div>
       </div>
       <div className="journal-card-body">

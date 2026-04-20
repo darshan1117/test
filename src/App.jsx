@@ -46,6 +46,14 @@ function App() {
               }
             />
             <Route
+              path="/edit-entry/:id"
+              element={
+                <ProtectedRoute>
+                  <CreateEntry />
+                </ProtectedRoute>
+              }
+            />
+            <Route
               path="/profile"
               element={
                 <ProtectedRoute>

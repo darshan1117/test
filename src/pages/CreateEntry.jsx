@@ -1,8 +1,8 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, CheckCircle2, AlertCircle } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-import { createEntry } from '../services/journalService';
+import { createEntry, getEntry, updateEntry } from '../services/journalService';
 import Navbar from '../components/layout/Navbar';
 
 const MOODS = [
@@ -15,7 +15,11 @@ const MOODS = [
 const CreateEntry = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const { id } = useParams();
+  const isEditing = !!id;
+
   const [loading, setLoading] = useState(false);
+  const [fetching, setFetching] = useState(isEditing);
   const [error, setError] = useState('');
 
   const [form, setForm] = useState({
@@ -24,6 +28,31 @@ const CreateEntry = () => {
     mood: 'Happy',
     date: new Date().toISOString().split('T')[0],
   });
+
+  useEffect(() => {
+    if (!id) return;
+    const loadEntry = async () => {
+      try {
+        const docSnap = await getEntry(id);
+        if (docSnap.exists()) {
+          const data = docSnap.data();
+          setForm({
+            title: data.title || '',
+            content: data.content || '',
+            mood: data.mood || 'Happy',
+            date: data.date || new Date().toISOString().split('T')[0],
+          });
+        } else {
+          setError('Entry not found');
+        }
+      } catch (err) {
+        setError('Failed to load entry');
+      } finally {
+        setFetching(false);
+      }
+    };
+    loadEntry();
+  }, [id]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -35,7 +64,11 @@ const CreateEntry = () => {
     setLoading(true);
     setError('');
     try {
-      await createEntry(user.uid, form);
+      if (isEditing) {
+        await updateEntry(id, form);
+      } else {
+        await createEntry(user.uid, form);
+      }
       navigate('/dashboard');
     } catch (err) {
       setError('Failed to save journal entry. Please try again.');
@@ -55,12 +88,18 @@ const CreateEntry = () => {
               <ArrowLeft size={18} /> Back
             </button>
             <div className="create-trip-title-wrap">
-              <h2 className="gradient-text">How was your day?</h2>
+              <h2 className="gradient-text">{isEditing ? 'Edit Journal Entry' : 'How was your day?'}</h2>
             </div>
           </div>
 
           <div className="card form-card">
-            <form onSubmit={handleSubmit}>
+            {fetching ? (
+              <div style={{ textAlign: 'center', padding: '40px 0' }}>
+                <div className="spinner" style={{ margin: '0 auto' }} />
+                <p style={{ color: 'var(--text-secondary)', marginTop: 16 }}>Loading entry...</p>
+              </div>
+            ) : (
+              <form onSubmit={handleSubmit}>
               
               <div className="form-group">
                 <label className="form-label">How are you feeling?</label>
@@ -141,10 +180,11 @@ const CreateEntry = () => {
                   ) : (
                     <CheckCircle2 size={18} />
                   )}
-                  {loading ? 'Saving...' : 'Save Entry'}
+                  {loading ? (isEditing ? 'Updating...' : 'Saving...') : (isEditing ? 'Update Entry' : 'Save Entry')}
                 </button>
               </div>
             </form>
+            )}
           </div>
         </div>
       </div>
