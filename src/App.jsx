@@ -18,55 +18,61 @@ const PageLoader = () => (
   </div>
 );
 
+import { ToastProvider } from './context/ToastContext';
+import ToastContainer from './components/layout/ToastContainer';
+
 function App() {
   return (
     <BrowserRouter>
-      <AuthProvider>
-        <Suspense fallback={<PageLoader />}>
-          <Routes>
-            {/* Public */}
-            <Route path="/" element={<LandingPage />} />
-            <Route path="/auth" element={<AuthPage />} />
+      <ToastProvider>
+        <AuthProvider>
+          <ToastContainer />
+          <Suspense fallback={<PageLoader />}>
+            <Routes>
+              {/* Public */}
+              <Route path="/" element={<LandingPage />} />
+              <Route path="/auth" element={<AuthPage />} />
 
-            {/* Protected */}
-            <Route
-              path="/dashboard"
-              element={
-                <ProtectedRoute>
-                  <Dashboard />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/create-entry"
-              element={
-                <ProtectedRoute>
-                  <CreateEntry />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/edit-entry/:id"
-              element={
-                <ProtectedRoute>
-                  <CreateEntry />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/profile"
-              element={
-                <ProtectedRoute>
-                  <ProfilePage />
-                </ProtectedRoute>
-              }
-            />
+              {/* Protected */}
+              <Route
+                path="/dashboard"
+                element={
+                  <ProtectedRoute>
+                    <Dashboard />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/create-entry"
+                element={
+                  <ProtectedRoute>
+                    <CreateEntry />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/edit-entry/:id"
+                element={
+                  <ProtectedRoute>
+                    <CreateEntry />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/profile"
+                element={
+                  <ProtectedRoute>
+                    <ProfilePage />
+                  </ProtectedRoute>
+                }
+              />
 
-            {/* Fallback */}
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </Routes>
-        </Suspense>
-      </AuthProvider>
+              {/* Fallback */}
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Routes>
+          </Suspense>
+        </AuthProvider>
+      </ToastProvider>
     </BrowserRouter>
   );
 }

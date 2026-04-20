@@ -1,12 +1,14 @@
-import { useState, lazy, Suspense } from 'react';
+import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import {
-  PlaneTakeoff, Mail, Lock, User, Eye, EyeOff, ArrowRight, Globe
+  BookOpen, Mail, Lock, User, Eye, EyeOff, ArrowRight, Globe
 } from 'lucide-react';
 import { loginWithEmail, registerWithEmail, loginWithGoogle } from '../services/authService';
+import { useToast } from '../context/ToastContext';
 
 const AuthPage = () => {
   const navigate = useNavigate();
+  const { addToast } = useToast();
   const [mode, setMode] = useState('login'); // 'login' | 'signup'
   const [form, setForm] = useState({ name: '', email: '', password: '', confirmPass: '' });
   const [showPass, setShowPass] = useState(false);
@@ -32,8 +34,10 @@ const AuthPage = () => {
     try {
       if (mode === 'login') {
         await loginWithEmail(form.email, form.password);
+        addToast('Welcome back!');
       } else {
         await registerWithEmail(form.email, form.password, form.name);
+        addToast('Account created! Welcome to your journal.');
       }
       navigate('/dashboard');
     } catch (err) {
@@ -44,7 +48,9 @@ const AuthPage = () => {
         'auth/invalid-email': 'Please enter a valid email address.',
         'auth/invalid-credential': 'Invalid email or password.',
       };
-      setError(messages[err.code] || err.message || 'Something went wrong.');
+      const errMsg = messages[err.code] || err.message || 'Something went wrong.';
+      setError(errMsg);
+      addToast(errMsg, 'error');
     } finally {
       setLoading(false);
     }
@@ -54,9 +60,11 @@ const AuthPage = () => {
     setLoading(true);
     try {
       await loginWithGoogle();
+      addToast('Signed in with Google.');
       navigate('/dashboard');
     } catch (err) {
       setError('Google sign-in failed. Please try again.');
+      addToast('Google sign-in failed.', 'error');
     } finally {
       setLoading(false);
     }
@@ -73,17 +81,17 @@ const AuthPage = () => {
         <div className="auth-header">
           <Link to="/" className="auth-logo">
             <div className="logo-icon">
-              <PlaneTakeoff size={22} />
+              <BookOpen size={22} />
             </div>
-            <span>TravelWise</span>
+            <span>DailyJournal</span>
           </Link>
           <h1 className="auth-title">
             {mode === 'login' ? 'Welcome back' : 'Start your journey'}
           </h1>
           <p className="auth-subtitle">
             {mode === 'login'
-              ? 'Sign in to access your travel plans'
-              : 'Create your account and plan your dream trips'}
+              ? 'Sign in to access your journal'
+              : 'Create your account and start capturing your story'}
           </p>
         </div>
 

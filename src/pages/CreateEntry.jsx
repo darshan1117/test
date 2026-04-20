@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, CheckCircle2, AlertCircle } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { useToast } from '../context/ToastContext';
 import { createEntry, getEntry, updateEntry } from '../services/journalService';
 import Navbar from '../components/layout/Navbar';
 
@@ -14,6 +15,7 @@ const MOODS = [
 
 const CreateEntry = () => {
   const { user } = useAuth();
+  const { addToast } = useToast();
   const navigate = useNavigate();
   const { id } = useParams();
   const isEditing = !!id;
@@ -66,12 +68,16 @@ const CreateEntry = () => {
     try {
       if (isEditing) {
         await updateEntry(id, form);
+        addToast('Entry updated successfully!');
       } else {
         await createEntry(user.uid, form);
+        addToast('New entry saved to your journal.');
       }
       navigate('/dashboard');
     } catch (err) {
+      console.error(err);
       setError('Failed to save journal entry. Please try again.');
+      addToast('Failed to save entry.', 'error');
     } finally {
       setLoading(false);
     }

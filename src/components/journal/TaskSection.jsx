@@ -1,53 +1,60 @@
-import { useState, useEffect } from 'react';
-import { Plus, Check, Trash2, Circle, CheckCircle2 } from 'lucide-react';
+import { useState, useCallback } from 'react';
+import { Plus, Trash2, Circle, CheckCircle2 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
-import { subscribeToTasks, createTask, updateTask, deleteTask } from '../../services/taskService';
+import { useTasks } from '../../hooks/useTasks';
+import { useToast } from '../../context/ToastContext';
+import { createTask, updateTask, deleteTask } from '../../services/taskService';
 
 const TaskSection = () => {
   const { user } = useAuth();
-  const [tasks, setTasks] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const { data: tasks, loading } = useTasks(user?.uid);
+  const { addToast } = useToast();
   const [newTaskText, setNewTaskText] = useState('');
   const [adding, setAdding] = useState(false);
 
-  useEffect(() => {
-    if (!user?.uid) return;
-    const unsubscribe = subscribeToTasks(user.uid, (data) => {
-      setTasks(data);
-      setLoading(false);
-    });
-    return () => unsubscribe();
-  }, [user]);
-
-  const handleAddTask = async (e) => {
+  /**
+   * memoized handleAddTask prevents the form from re-creating this function on every render,
+   * which is useful if we ever pass this as a prop to a memoized sub-component.
+   */
+  const handleAddTask = useCallback(async (e) => {
     e.preventDefault();
     if (!newTaskText.trim()) return;
     setAdding(true);
     try {
       await createTask(user.uid, newTaskText);
       setNewTaskText('');
+      addToast('Task added successfully!');
     } catch (err) {
       console.error("Failed to add task", err);
+      addToast('Failed to add task.', 'error');
     } finally {
       setAdding(false);
     }
-  };
+  }, [user?.uid, newTaskText, addToast]);
 
-  const toggleTask = async (task) => {
+  /**
+   * toggleTask and removeTask are memoized to ensure they maintain the same reference,
+   * preventing unnecessary re-renders of the task items in the list.
+   */
+  const toggleTask = useCallback(async (task) => {
     try {
       await updateTask(task.id, { completed: !task.completed });
+      addToast(task.completed ? 'Task marked as incomplete' : 'Task completed!');
     } catch (err) {
       console.error("Failed to update task", err);
+      addToast('Failed to update task.', 'error');
     }
-  };
+  }, [addToast]);
 
-  const removeTask = async (taskId) => {
+  const removeTask = useCallback(async (taskId) => {
     try {
       await deleteTask(taskId);
+      addToast('Task removed.');
     } catch (err) {
       console.error("Failed to delete task", err);
+      addToast('Failed to delete task.', 'error');
     }
-  };
+  }, [addToast]);
 
   return (
     <div className="task-section">

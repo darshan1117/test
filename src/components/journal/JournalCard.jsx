@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import { format, parseISO } from 'date-fns';
 import { Trash2, Edit2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -9,7 +10,11 @@ const MOODS = {
   Productive: { emoji: '🚀', color: '#f59e0b', bg: 'rgba(245, 158, 11, 0.1)' },
 };
 
-const JournalCard = ({ entry, onDelete }) => {
+/**
+ * JournalCard is memoized so that it only re-renders if its props change.
+ * This makes the useCallback on the onDelete handler in Dashboard.jsx effective.
+ */
+const JournalCard = memo(({ entry, onDelete }) => {
   const navigate = useNavigate();
   const moodInfo = MOODS[entry.mood] || MOODS.Happy;
   const dateStr = entry.date ? format(parseISO(entry.date), 'MMM do, yyyy') : 'Unknown Date';
@@ -53,6 +58,8 @@ const JournalCard = ({ entry, onDelete }) => {
       </div>
     </div>
   );
-};
+});
+
+JournalCard.displayName = 'JournalCard';
 
 export default JournalCard;

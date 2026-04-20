@@ -1,8 +1,10 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { Plus, BookOpen, CheckSquare, Search, Calendar as CalendarIcon, TrendingUp } from 'lucide-react';
+import { Plus, BookOpen, CheckSquare, Search, Calendar as CalendarIcon, TrendingUp, AlertTriangle } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-import { subscribeToEntries, deleteEntry } from '../services/journalService';
+import { useJournalEntries } from '../hooks/useJournalEntries';
+import { useToast } from '../context/ToastContext';
+import { deleteEntry } from '../services/journalService';
 import JournalCard from '../components/journal/JournalCard';
 import AnalyticsPanel from '../components/journal/AnalyticsPanel';
 import TaskSection from '../components/journal/TaskSection';
@@ -11,32 +13,62 @@ import Navbar from '../components/layout/Navbar';
 
 const MOODS = ['All', 'Happy', 'Productive', 'Tired', 'Sad'];
 
+/**
+ * Custom Modal Component for deletions
+ */
+const DeleteModal = ({ isOpen, title, onConfirm, onCancel }) => {
+  if (!isOpen) return null;
+  return (
+    <div className="modal-overlay" onClick={onCancel}>
+      <div className="modal-content" onClick={e => e.stopPropagation()}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
+          <div style={{ background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', padding: 10, borderRadius: '50%' }}>
+            <AlertTriangle size={24} />
+          </div>
+          <h2 className="modal-title">Delete Entry?</h2>
+        </div>
+        <p className="modal-message">
+          Are you sure you want to delete <strong>"{title}"</strong>? This action cannot be undone.
+        </p>
+        <div className="modal-actions">
+          <button className="btn btn-secondary" onClick={onCancel}>Cancel</button>
+          <button className="btn btn-primary" style={{ background: '#ef4444' }} onClick={onConfirm}>Delete</button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const Dashboard = () => {
   const { user } = useAuth();
+  const { data: entries, loading } = useJournalEntries(user?.uid);
+  const { addToast } = useToast();
   const navigate = useNavigate();
-  const [entries, setEntries] = useState([]);
-  const [loading, setLoading] = useState(true);
 
   // Filters
   const [searchQuery, setSearchQuery] = useState('');
   const [moodFilter, setMoodFilter] = useState('All');
 
-  useEffect(() => {
-    if (!user?.uid) return;
-    
-    setLoading(true);
-    const unsubscribe = subscribeToEntries(user.uid, (data) => {
-      setEntries(data);
-      setLoading(false);
-    });
+  // Modal State
+  const [deleteModal, setDeleteModal] = useState({ open: false, entryId: null, entryTitle: '' });
 
-    return () => unsubscribe();
-  }, [user]);
-
-  const handleDelete = useCallback(async (entryId) => {
-    if (!window.confirm('Are you sure you want to delete this journal entry?')) return;
-    await deleteEntry(entryId);
+  /**
+   * handleDelete shows the custom modal instead of window.confirm
+   */
+  const handleDeleteRequest = useCallback((entry) => {
+    setDeleteModal({ open: true, entryId: entry.id, entryTitle: entry.title });
   }, []);
+
+  const confirmDelete = async () => {
+    try {
+      await deleteEntry(deleteModal.entryId);
+      addToast('Entry deleted successfully');
+      setDeleteModal({ open: false, entryId: null, entryTitle: '' });
+    } catch (err) {
+      console.error(err);
+      addToast('Failed to delete entry.', 'error');
+    }
+  };
 
   const firstName = user?.displayName?.split(' ')[0] || 'Student';
 
@@ -68,6 +100,7 @@ const Dashboard = () => {
             <Plus size={18} /> New Entry
           </button>
         </div>
+
 
         {/* Top Grid: Analytics */}
         <div className="card stat-trend-card animate-fade-in" style={{ marginBottom: 24 }}>
@@ -158,12 +191,20 @@ const Dashboard = () => {
           <div className="journal-grid">
             {filteredEntries.map((entry, i) => (
               <div key={entry.id} style={{ animationDelay: `${0.1 * (i % 5)}s` }} className="animate-fade-in">
-                <JournalCard entry={entry} onDelete={handleDelete} />
+                <JournalCard entry={entry} onDelete={() => handleDeleteRequest(entry)} />
               </div>
             ))}
           </div>
         )}
       </div>
+
+      {/* Custom Delete Modal */}
+      <DeleteModal 
+        isOpen={deleteModal.open}
+        title={deleteModal.entryTitle}
+        onConfirm={confirmDelete}
+        onCancel={() => setDeleteModal({ open: false, entryId: null, entryTitle: '' })}
+      />
     </div>
   );
 };

@@ -1,57 +1,64 @@
-import { useState, useEffect } from 'react';
+import { useState, useCallback } from 'react';
 import { Plus, CheckCircle2, Circle, Trash2, Calendar as CalendarIcon } from 'lucide-react';
 import { format, parseISO, isBefore, startOfDay } from 'date-fns';
 import { useAuth } from '../../context/AuthContext';
-import { subscribeToDeadlines, createDeadline, updateDeadline, deleteDeadline } from '../../services/deadlineService';
+import { useDeadlines } from '../../hooks/useDeadlines';
+import { useToast } from '../../context/ToastContext';
+import { createDeadline, updateDeadline, deleteDeadline } from '../../services/deadlineService';
 
 const DeadlineSection = () => {
   const { user } = useAuth();
-  const [deadlines, setDeadlines] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const { data: deadlines, loading } = useDeadlines(user?.uid);
+  const { addToast } = useToast();
   
   // Form State
   const [newTitle, setNewTitle] = useState('');
   const [newDate, setNewDate] = useState(new Date().toISOString().split('T')[0]);
   const [adding, setAdding] = useState(false);
 
-  useEffect(() => {
-    if (!user?.uid) return;
-    const unsubscribe = subscribeToDeadlines(user.uid, (data) => {
-      setDeadlines(data);
-      setLoading(false);
-    });
-    return () => unsubscribe();
-  }, [user]);
-
-  const handleAdd = async (e) => {
+  /**
+   * handleAdd is memoized to prevent unnecessary re-creations.
+   * Dependencies ensure it always has current input values.
+   */
+  const handleAdd = useCallback(async (e) => {
     e.preventDefault();
     if (!newTitle.trim() || !newDate) return;
     setAdding(true);
     try {
       await createDeadline(user.uid, newTitle, newDate);
       setNewTitle('');
+      addToast('Deadline added successfully!');
     } catch (err) {
       console.error("Failed to add deadline", err);
+      addToast('Failed to add deadline.', 'error');
     } finally {
       setAdding(false);
     }
-  };
+  }, [user?.uid, newTitle, newDate, addToast]);
 
-  const toggleComplete = async (deadline) => {
+  /**
+   * toggleComplete and removeDeadline are memoized to maintain stable references,
+   * which is crucial for performance when mapping over lists of components.
+   */
+  const toggleComplete = useCallback(async (deadline) => {
     try {
       await updateDeadline(deadline.id, { completed: !deadline.completed });
+      addToast(deadline.completed ? 'Deadline marked as incomplete' : 'Deadline met! Well done.');
     } catch (err) {
       console.error("Failed to update deadline", err);
+      addToast('Failed to update deadline.', 'error');
     }
-  };
+  }, [addToast]);
 
-  const removeDeadline = async (deadlineId) => {
+  const removeDeadline = useCallback(async (deadlineId) => {
     try {
       await deleteDeadline(deadlineId);
+      addToast('Deadline deleted.');
     } catch (err) {
       console.error("Failed to delete deadline", err);
+      addToast('Failed to delete deadline.', 'error');
     }
-  };
+  }, [addToast]);
 
   const today = startOfDay(new Date());
 
